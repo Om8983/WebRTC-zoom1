@@ -4,7 +4,7 @@ import {
   userLoginValidation,
   userSignupValidation,
 } from "../../middleware/userValidation";
-import { login, signup } from "../../controllers/auth/login";
+import { login, signup } from "../../controllers/auth/authControllers";
 
 const router = Router();
 
@@ -21,6 +21,7 @@ router.post(
     }
   },
 );
+
 router.post(
   "/login",
   //   loginSchemaValidation(userLoginSchema),
