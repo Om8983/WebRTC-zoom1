@@ -4,9 +4,13 @@ import {
   userLoginValidation,
   userSignupValidation,
 } from "../../middleware/userValidation";
-import { login, signup } from "../../controllers/auth/login";
+import { login, signup } from "../../controllers/auth/authControllers";
+import { authFunction, fallbackPath, userScope } from "./googleAuth";
 
 const router = Router();
+
+router.get("/google", userScope);
+router.get("/google/callback", fallbackPath, authFunction);
 
 router.post(
   "/signup",
@@ -21,6 +25,7 @@ router.post(
     }
   },
 );
+
 router.post(
   "/login",
   //   loginSchemaValidation(userLoginSchema),
