@@ -13,42 +13,52 @@ datasource db {
 }
 
 model User {
-  id       String    @id @unique @default(uuid())
+  id       String               @id @unique @default(uuid())
   userName String
-  email    String    @unique
+  email    String               @unique
   password String?
   googleId String?
-  host     Meeting[] @relation("Host")
-  meeting  Meeting[]
+  meetings MeetingParticipant[]
 }
 
 model Meeting {
   // a unique string will be generated which will be a combination of word and number and then be stored as unicode and further be also used to share with other users to join the meeting
   // a host is also a part of the meeting but it can't be a participant(thought he can transfer the host to some other but he will remain as host). While every participant can be both host and participant. Each participant is bound with only a single meeting i.e. a user can't join the meeting again while he is attending the meeting
-  id            String               @id @unique @default(uuid())
-  userId        String
-  meetingCode   String               @unique
-  createdAt     DateTime             @default(now())
-  endTime       DateTime
-  meetingStatus MeetingStatus
-  hostId        String
-  invitees      MeetingParticipant[]
-  host          User                 @relation("Host", fields: [hostId], references: [id])
-  user          User?                @relation(fields: [userId], references: [id])
-
-  @@unique([id, userId])
+  id                   String               @id @unique @default(uuid())
+  meetingCode          String               @unique
+  createdAt            DateTime             @default(now())
+  endTime              DateTime?
+  meetingStatus        MeetingStatus
+  participants         MeetingParticipant[]
+  isMeetingCodeInvalid Boolean?             @default(false)
 }
 
 model MeetingParticipant {
   participantId String
-  joinedAt      DateTime
-  leaveAt       DateTime
-  meetingId     String   @unique
-  meeting       Meeting  @relation(fields: [meetingId], references: [id])
+  role          Role
+  joinedAt      DateTime?
+  leaveAt       DateTime?
+  meetingId     String
+  joinStatus    ParticipantJoinStatus
+  meeting       Meeting               @relation(fields: [meetingId], references: [id])
+  user          User                  @relation(fields: [participantId], references: [id])
+
+  @@unique([meetingId, participantId])
+}
+
+enum Role {
+  HOST
+  PARTICIPANT
+  INVITED
+}
+
+enum ParticipantJoinStatus {
+  PENDING
+  JOINED
+  DECLINED
 }
 
 enum MeetingStatus {
   ACTIVE
   END
-  SCHEDULED
 }
