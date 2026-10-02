@@ -96,7 +96,7 @@ export default defineConfig([
 11. Mute / unmute and Video / no-video functionality
 12. Participants join and leave events
 
-    `COMMUNICATION`
+`COMMUNICATION`
 
 13. audio calling
 14. video calling
@@ -107,6 +107,7 @@ export default defineConfig([
 
 `RESOURCES REQUIRED`
 `BACKEND`
+
 
 1. Prisma + PostgreqSQL
    For storing the user information
