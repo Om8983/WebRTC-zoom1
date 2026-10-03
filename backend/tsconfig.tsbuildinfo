@@ -1,1 +1,30 @@
-{"root":["./src/index.ts","./src/wsserver/index.ts"],"version":"5.9.3"}
+{
+  "root": [
+    "./src/index.ts",
+    "./src/prismainstance.ts",
+    "./src/controllers/commoncontrollers.ts",
+    "./src/controllers/auth/authcontrollers.ts",
+    "./src/controllers/meetingcontrollers/meetingcontrollers.ts",
+    "./src/controllers/signalingcontrollers/wssignalingcontrollers.ts",
+    "./src/generated/prisma/browser.ts",
+    "./src/generated/prisma/client.ts",
+    "./src/generated/prisma/commoninputtypes.ts",
+    "./src/generated/prisma/enums.ts",
+    "./src/generated/prisma/models.ts",
+    "./src/generated/prisma/internal/class.ts",
+    "./src/generated/prisma/internal/prismanamespace.ts",
+    "./src/generated/prisma/internal/prismanamespacebrowser.ts",
+    "./src/generated/prisma/models/meeting.ts",
+    "./src/generated/prisma/models/meetingparticipant.ts",
+    "./src/generated/prisma/models/user.ts",
+    "./src/middleware/tokenvalidation.ts",
+    "./src/middleware/uservalidation.ts",
+    "./src/middleware/zodvalidation/schemavalidation.ts",
+    "./src/router/authroutes/googleauth.ts",
+    "./src/router/authroutes/googlestrategy.ts",
+    "./src/router/authroutes/router.ts",
+    "./src/router/meetingroutes/route.ts",
+    "./src/wsserver/index.ts"
+  ],
+  "version": "6.0.3"
+}

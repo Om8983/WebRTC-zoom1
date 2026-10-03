@@ -292,13 +292,20 @@ export const wsTypeLeave = async (message: MessageType) => {
     },
     select: {
       meetingStatus: true,
-      hostId: true,
+      participants: {
+        where: {
+          participantId: message.userId,
+        },
+        select: {
+          role: true,
+        },
+      },
     },
   });
   if (meeting?.meetingStatus === "END") {
     return { msg: "Meeting has already ended" };
   }
-  if (meeting?.hostId !== message.userId) {
+  if (meeting?.participants[0]?.role !== "HOST") {
     return { msg: "Only host can end the meeting." };
   }
   const users = meetingUsersMap.get(meetingId);

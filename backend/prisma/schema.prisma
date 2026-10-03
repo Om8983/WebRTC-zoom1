@@ -1,11 +1,7 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
 }
 
 datasource db {
@@ -22,24 +18,22 @@ model User {
 }
 
 model Meeting {
-  // a unique string will be generated which will be a combination of word and number and then be stored as unicode and further be also used to share with other users to join the meeting
-  // a host is also a part of the meeting but it can't be a participant(thought he can transfer the host to some other but he will remain as host). While every participant can be both host and participant. Each participant is bound with only a single meeting i.e. a user can't join the meeting again while he is attending the meeting
   id                   String               @id @unique @default(uuid())
   meetingCode          String               @unique
   createdAt            DateTime             @default(now())
   endTime              DateTime?
   meetingStatus        MeetingStatus
-  participants         MeetingParticipant[]
   isMeetingCodeInvalid Boolean?             @default(false)
+  participants         MeetingParticipant[]
 }
 
 model MeetingParticipant {
   participantId String
-  role          Role
   joinedAt      DateTime?
   leaveAt       DateTime?
   meetingId     String
   joinStatus    ParticipantJoinStatus
+  role          Role
   meeting       Meeting               @relation(fields: [meetingId], references: [id])
   user          User                  @relation(fields: [participantId], references: [id])
 
