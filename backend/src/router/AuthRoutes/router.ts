@@ -4,7 +4,7 @@ import {
   userLoginValidation,
   userSignupValidation,
 } from "../../middleware/userValidation";
-import { login, signup } from "../../controllers/auth/authControllers";
+import { login, logout, signup } from "../../controllers/auth/authControllers";
 import { authFunction, fallbackPath, userScope } from "./googleAuth";
 
 const router = Router();
@@ -39,3 +39,9 @@ router.post(
     }
   },
 );
+
+router.post("/logout", async (req: Request, res: Response) => {
+  await logout(req, res);
+});
+
+export default router;

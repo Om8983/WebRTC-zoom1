@@ -14,3 +14,5 @@ router.post("/joinMeeting", joinMeeting);
 router.post("/leaveMeeting", leaveMeeting);
 router.post("/endMeeting", endMeeting);
 router.get("/viewParticipants", viewParticipants);
+
+export default router;

@@ -30,7 +30,7 @@ export const authFunction = async (req: Request, res: Response) => {
         email: user.email,
         iat: Math.floor(Date.now() / 1000),
       },
-      process.env.ACCESTOKEN_SECRET ?? "",
+      process.env.ACCESSTOKEN_SECRET ?? "",
       {
         expiresIn: "15min",
       },
@@ -58,7 +58,7 @@ export const authFunction = async (req: Request, res: Response) => {
       .status(200)
       .redirect(
         process.env.GOOGLE_LOGIN_REDIRECT_URL ??
-          "http://localhost:5173/auth/login",
+          "http://localhost:5173/protected",
       );
   } catch (error) {}
 };

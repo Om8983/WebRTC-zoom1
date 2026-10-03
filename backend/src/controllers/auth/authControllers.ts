@@ -38,7 +38,7 @@ export async function signup(req: Request, res: Response) {
         email: userData.email,
         iat: Math.floor(Date.now() / 1000),
       },
-      process.env.ACCESTOKEN_SECRET ?? "",
+      process.env.ACCESSTOKEN_SECRET ?? "",
       {
         expiresIn: "15min",
       },
@@ -61,9 +61,10 @@ export async function signup(req: Request, res: Response) {
       maxAge: 7 * 24 * 60 * 60,
       httpOnly: true,
     });
+
     res.status(200).json({ msg: "User signup success." });
   } catch (error) {
-    res.status(500).json({ msg: "Internal Server Error" });
+    res.status(500).json({ msg: "Internal Server Error", error });
     return;
   }
 }
@@ -130,6 +131,25 @@ export async function login(req: Request, res: Response) {
     });
 
     res.cookie("refreshtoken", refreshToken, {
+      maxAge: 7 * 24 * 60 * 60,
+      httpOnly: true,
+    });
+
+    res.status(200).json({ msg: "Success" });
+    return;
+  } catch (error) {
+    return res.status(500).json({ msg: "Internal Server Error!" });
+  }
+}
+
+export async function logout(req: Request, res: Response) {
+  try {
+    res.cookie("accesstoken", {
+      maxAge: 15 * 60,
+      httpOnly: true,
+    });
+
+    res.cookie("refreshtoken", {
       maxAge: 7 * 24 * 60 * 60,
       httpOnly: true,
     });

@@ -4,6 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "generate": "prisma generate",
+    "build": "npm run generate && tsc -p tsconfig.json",
+    "start": "node dist/index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -34,6 +37,7 @@
     "@types/node": "^26.2.0",
     "@types/passport-google-oauth20": "^2.0.17",
     "@types/ws": "^8.18.1",
-    "prisma": "^7.9.1"
+    "prisma": "^7.9.1",
+    "typescript": "^6.0.2"
   }
 }
