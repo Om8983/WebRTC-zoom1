@@ -54,7 +54,7 @@ export async function signup(req: Request, res: Response) {
       },
     );
     res.cookie("accesstoken", accessToken, {
-      maxAge: 15 * 60,
+      maxAge: 15 * 60 * 60,
       httpOnly: true,
     });
     res.cookie("refreshtoken", refreshToken, {
@@ -126,7 +126,7 @@ export async function login(req: Request, res: Response) {
     );
 
     res.cookie("accesstoken", accessToken, {
-      maxAge: 15 * 60,
+      maxAge: 15 * 60 * 60,
       httpOnly: true,
     });
 
@@ -135,7 +135,7 @@ export async function login(req: Request, res: Response) {
       httpOnly: true,
     });
 
-    res.status(200).json({ msg: "Success" });
+    res.status(200).json({ msg: "Success", userId: user?.id });
     return;
   } catch (error) {
     return res.status(500).json({ msg: "Internal Server Error!" });
@@ -145,7 +145,7 @@ export async function login(req: Request, res: Response) {
 export async function logout(req: Request, res: Response) {
   try {
     res.cookie("accesstoken", {
-      maxAge: 15 * 60,
+      maxAge: 15 * 60 * 60,
       httpOnly: true,
     });
 

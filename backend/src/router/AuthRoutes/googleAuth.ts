@@ -46,7 +46,7 @@ export const authFunction = async (req: Request, res: Response) => {
       },
     );
     res.cookie("accesstoken", accessToken, {
-      maxAge: 15 * 60,
+      maxAge: 15 * 60 * 60,
       httpOnly: true,
     });
     res.cookie("refreshtoken", refreshToken, {
@@ -57,8 +57,10 @@ export const authFunction = async (req: Request, res: Response) => {
     return res
       .status(200)
       .redirect(
-        process.env.GOOGLE_LOGIN_REDIRECT_URL ??
-          "http://localhost:5173/protected",
+        process.env.GOOGLE_LOGIN_REDIRECT_URL ?? "http://localhost:5173/home",
       );
-  } catch (error) {}
+  } catch (error) {
+    res.status(500).json({ msg: "Internal server error." });
+    return;
+  }
 };
