@@ -8,7 +8,7 @@ function App() {
 
     <ThemeProvider>
       <BrowserRouter>
-        {/* <Toaster /> */}
+        <Toaster richColors closeButton position="top-center" />
         <Approutes></Approutes>
       </BrowserRouter>
     </ThemeProvider>

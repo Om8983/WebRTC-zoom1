@@ -9,7 +9,7 @@ const GoogleMark = () => (
     </svg>
 )
 
-export const GoogleButton = () => {
+export const GoogleButton = ({ disabled = false }: { disabled?: boolean }) => {
     const { theme } = useTheme()
     const themeClasses = theme === "dark"
         ? "border-[#405148] bg-[#202d27] text-gather-ink hover:border-[#617667] hover:bg-[#293831]"
@@ -17,9 +17,11 @@ export const GoogleButton = () => {
 
     return (
         <button
-            className={`flex min-h-11 w-full items-center justify-center gap-[11px] rounded-[5px] border text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gather-forest ${themeClasses}`}
+            className={`flex min-h-11 w-full items-center justify-center gap-[11px] rounded-[5px] border text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gather-forest disabled:cursor-not-allowed disabled:opacity-60 ${themeClasses}`}
             type="button"
             aria-label="Continue with Google"
+            disabled={disabled}
+            onClick={() => window.open(`${import.meta.env.VITE_BACKEND_GOOGLE_AUTH_URL}`, "_self")}
         >
             <GoogleMark />
             <span>Continue with Google</span>

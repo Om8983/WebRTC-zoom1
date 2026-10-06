@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { IconChevronDown, IconLogout } from "@tabler/icons-react"
 import { useTheme } from "../ThemeProvider"
+import axios, { AxiosError } from "axios"
+import { toast } from "sonner"
 
 export const AccountMenu = () => {
     const [isOpen, setIsOpen] = useState(false)
@@ -48,9 +50,20 @@ export const AccountMenu = () => {
         }
     }, [isOpen])
 
-    const handleLogout = () => {
-        setIsOpen(false)
-        navigate("/login")
+    const handleLogout = async () => {
+        try {
+            const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/auth/logout`, {}, { withCredentials: true })
+            if (res.status === 200) {
+                setIsOpen(false)
+                navigate("/login")
+            }
+        } catch (error) {
+            if (error instanceof AxiosError) {
+                if (error?.response?.status === 500) {
+                    toast.error("Internal Server Error! Please try again.")
+                }
+            }
+        }
     }
 
     return (
