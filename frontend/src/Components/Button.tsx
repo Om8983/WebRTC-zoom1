@@ -2,7 +2,7 @@ import React from 'react'
 import { useTheme } from './ThemeProvider';
 
 type BtnProps = {
-    onClick: () => void;
+    onClick?: () => void;
     title: string;
     className?: string;
     children?: React.ReactElement;
