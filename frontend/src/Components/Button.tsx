@@ -8,9 +8,10 @@ type BtnProps = {
     children?: React.ReactElement;
     btnType?: "button" | "submit" | "reset";
     variant?: "primary" | "secondary" | "quiet" | "custom";
+    disabled?: boolean;
 }
 
-export const Button = ({ onClick, title, className = "", children, btnType = "button", variant = "secondary" }: BtnProps) => {
+export const Button = ({ onClick, title, className = "", children, btnType = "button", variant = "secondary", disabled = false }: BtnProps) => {
     const { theme } = useTheme()
     const isDark = theme === "dark"
     const buttonVariants = {
@@ -29,7 +30,8 @@ export const Button = ({ onClick, title, className = "", children, btnType = "bu
         <button
             type={btnType}
             onClick={onClick}
-            className={`inline-flex items-center justify-center gap-[7px] rounded-[5px] border px-[13px] py-[9px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gather-forest max-[380px]:px-[10px] max-[380px]:py-2 ${buttonVariants[variant]} ${className}`}>
+            disabled={disabled}
+            className={`inline-flex items-center justify-center gap-[7px] rounded-[5px] border px-[13px] py-[9px] font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gather-forest disabled:cursor-not-allowed disabled:opacity-60 max-[380px]:px-[10px] max-[380px]:py-2 ${buttonVariants[variant]} ${className}`}>
             {title}
             {children}
         </button>
