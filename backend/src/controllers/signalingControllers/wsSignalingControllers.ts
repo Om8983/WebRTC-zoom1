@@ -24,7 +24,7 @@ type MessageType = {
 };
 
 export const wsTypeJoin = (message: MessageType, ws: WebSocket) => {
-  if (!message.userId && !message.meetingId) return;
+  if (!message.userId || !message.meetingId) return;
   const socketId = crypto.randomUUID();
 
   socketUserMap.set(socketId, {
@@ -40,6 +40,7 @@ export const wsTypeJoin = (message: MessageType, ws: WebSocket) => {
 
   return {
     msg: "User joined successfully.",
+    type: "join",
     existingUsers: users.filter((c) => c !== message.userId),
   };
 };
@@ -270,7 +271,7 @@ export const wsTypeAnswer = async (message: MessageType, ws: WebSocket) => {
   }
 };
 
-export const wsTypeLeave = async (message: MessageType) => {
+export const wsTypeEnd = async (message: MessageType) => {
   // first verify the credentials by the user
   // get the user and validate socket Connection
   // validate the meeting is active
@@ -320,4 +321,8 @@ export const wsTypeLeave = async (message: MessageType) => {
   return { msg: "Meeting has ended successfully." };
 };
 
-export const wsTypeICECandidate = (message: MessageType) => {};
+export const wsTypeICECandidate = (message: MessageType) => {
+  if (!message.userId || !message.meetingId) {
+    return;
+  }
+};
