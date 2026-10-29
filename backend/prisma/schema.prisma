@@ -28,6 +28,7 @@ model Meeting {
 }
 
 model MeetingParticipant {
+  id            String                @id @default(uuid()) // just for the sake of having a primary key in the record, so that the record later can be deleted directly 
   participantId String
   joinedAt      DateTime?
   leaveAt       DateTime?
