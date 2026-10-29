@@ -2,20 +2,13 @@ import { error } from "console";
 import { WebSocketServer, WebSocket } from "ws";
 import {
   wsTypeAnswer,
+  wsTypeEnd,
   wsTypeICECandidate,
   wsTypeJoin,
-  wsTypeLeave,
   wsTypeOffer,
+  wsTypeParticipantLeft,
+  wsTypeParticpantJoined,
 } from "../controllers/signalingControllers/wsSignalingControllers";
-
-const socketUserMap = new Map<
-  string,
-  {
-    userId: string;
-    meetingId: string;
-  }
->();
-const meetingUsersMap = new Map<string, string[]>();
 
 export function initiateWSS(server: any) {
   // so the socket <=> userId map will contain array of {key}:{value} pairs where key would be the generated socketId and value would be the usreObj containing the userId and the meetingId
@@ -49,15 +42,24 @@ export function initiateWSS(server: any) {
       const message = JSON.parse(data) as MessageType;
       switch (message.type) {
         case "join":
-          wsTypeJoin(message, ws);
+          const res = wsTypeJoin(message, ws);
+          console.log("got the response", res);
+          if (res && ws.readyState === WebSocket.OPEN) {
+            console.log("ws is in readystate sending res");
+            return ws.send(JSON.stringify(res));
+          }
+        case "joinMeeting":
+          wsTypeParticpantJoined(message, ws);
+        case "leaveMeeting":
+          wsTypeParticipantLeft(message, ws);
         case "createOffer":
           wsTypeOffer(message, ws);
           return;
         case "createAnswer":
           wsTypeAnswer(message, ws);
           return;
-        case "leaveMeeting":
-          wsTypeLeave(message);
+        case "endMeeting":
+          wsTypeEnd(message);
           return;
         case "addIceCandidate":
           wsTypeICECandidate(message);
