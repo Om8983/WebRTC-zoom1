@@ -1,0 +1,13 @@
+{
+  // Emit config used by `npm run build`. Kept separate from tsconfig.json
+  // because rootDir is ./src: including ../prisma.config.ts here would
+  // fail with TS6059 ("not under rootDir") and would change dist/ layout.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "./src",
+    "outDir": "./dist"
+  },
+  "include": ["./src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

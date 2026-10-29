@@ -8,6 +8,7 @@ import os from "os";
 import { initiateWSS } from "./wsServer";
 import googleRouter from "./router/AuthRoutes/router";
 import userRouter from "./router/meetingRoutes/route";
+import { prisma } from "./prismaInstance";
 const app = express();
 
 // just for understanding
@@ -32,8 +33,16 @@ const PORT = process.env.BACKEND_PORT;
 const server = http.createServer(app);
 initiateWSS(server);
 
-app.use("api/v1/users", userRouter);
+app.use("/api/v1/users", userRouter);
 app.use("/auth", googleRouter);
+
+// Wake the Neon compute / open the pool at boot instead of making the
+// first request pay the ~4s cold-start cost (which previously surfaced
+// as Prisma P2028 transaction timeouts). Non-fatal: queries retry on use.
+void prisma
+  .$connect()
+  .then(() => console.log("Database connection warmed up"))
+  .catch((err) => console.error("Database warm-up failed:", err));
 
 server.listen(PORT, () => {
   console.log(`Backend running on port ${PORT}`);
