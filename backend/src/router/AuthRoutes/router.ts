@@ -98,6 +98,7 @@ router.get("/authCheck", async (req: Request, res: Response) => {
       res.cookie("accesstoken", accessToken, {
         maxAge: 15 * 60 * 60,
         httpOnly: true,
+        sameSite: "none",
       });
       res.status(200).json({ msg: "Success", userId: user.id });
     } else {
