@@ -9,6 +9,8 @@ import { ThemeToggle } from "../ThemeToggle"
 import { useTheme } from "../ThemeProvider"
 import axios, { AxiosError } from "axios"
 import { toast } from "sonner"
+import { useSelector } from "react-redux"
+import type { Rootstate } from "../../redux/store"
 
 type AuthFieldProps = InputHTMLAttributes<HTMLInputElement> & {
     label: string
@@ -40,6 +42,14 @@ export const LoginSection = ({ isSignup }: { isSignup: boolean }) => {
     const [acceptedTerms, setAcceptedTerms] = useState(false)
     const [isSubmitting, setIsSubmitting] = useState(false)
 
+    const userCred = useSelector(
+        (state: Rootstate) => state.user
+    )
+    console.log('isLogin,', userCred.isLogin)
+    if (userCred.isLogin) {
+        navigate('/home', { replace: true });
+        return
+    }
     const handleLogin = async () => {
         const loginPayload = { email, password }
         setIsSubmitting(true)
@@ -47,7 +57,6 @@ export const LoginSection = ({ isSignup }: { isSignup: boolean }) => {
             const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/auth/login`, loginPayload, { withCredentials: true })
             if (res.status === 200) {
                 navigate('/home')
-                toast.success("User Login Successfull.")
             }
         } catch (e) {
             if (e instanceof AxiosError) {
@@ -74,9 +83,9 @@ export const LoginSection = ({ isSignup }: { isSignup: boolean }) => {
         setIsSubmitting(true)
         try {
             const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/auth/signup`, signUpPayload, { withCredentials: true })
-            console.log('res', res)
+            console.log("status is 200 and forwarding to protected route")
             if (res.status === 200) {
-                toast.success("User SignUp Successfull.")
+                navigate('/protected')
             }
         } catch (error) {
             if (error instanceof AxiosError) {
