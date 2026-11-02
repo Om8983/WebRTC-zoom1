@@ -36,7 +36,7 @@ const dialogCopy = {
 
 export const MeetingDialog = ({ action, onClose, onSubmit }: MeetingDialogProps) => {
     const [submitted, setSubmitted] = useState(false)
-    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState<boolean>(false)
     const [invitees, setInvitees] = useState<string[]>([])
     const [inviteeInput, setInviteeInput] = useState("")
     const closeButtonRef = useRef<HTMLButtonElement>(null)
@@ -159,7 +159,7 @@ export const MeetingDialog = ({ action, onClose, onSubmit }: MeetingDialogProps)
                                 title={isSubmitting ? (action === "create" ? "Creating meeting..." : "Joining meeting...") : copy.submit}
                                 variant="primary"
                             >
-                                {isSubmitting && <IconLoader2 aria-hidden="true" className="animate-spin" size={16} stroke={1.8} />}
+                                {isSubmitting ? <IconLoader2 aria-hidden="true" className="animate-spin" size={16} stroke={1.8} /> : undefined}
                             </Button>
                         </div>
                     </form>
