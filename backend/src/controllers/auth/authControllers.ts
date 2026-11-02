@@ -56,10 +56,12 @@ export async function signup(req: Request, res: Response) {
     res.cookie("accesstoken", accessToken, {
       maxAge: 15 * 60 * 60,
       httpOnly: true,
+      sameSite: "none",
     });
     res.cookie("refreshtoken", refreshToken, {
       maxAge: 7 * 24 * 60 * 60,
       httpOnly: true,
+      sameSite: "none",
     });
 
     res.status(200).json({ msg: "User signup success." });
@@ -128,11 +130,13 @@ export async function login(req: Request, res: Response) {
     res.cookie("accesstoken", accessToken, {
       maxAge: 15 * 60 * 60,
       httpOnly: true,
+      sameSite: "none",
     });
 
     res.cookie("refreshtoken", refreshToken, {
       maxAge: 7 * 24 * 60 * 60,
       httpOnly: true,
+      sameSite: "none",
     });
 
     res.status(200).json({ msg: "Success", userId: user?.id });
@@ -147,11 +151,13 @@ export async function logout(req: Request, res: Response) {
     res.cookie("accesstoken", {
       maxAge: 15 * 60 * 60,
       httpOnly: true,
+      sameSite: "none",
     });
 
     res.cookie("refreshtoken", {
       maxAge: 7 * 24 * 60 * 60,
       httpOnly: true,
+      sameSite: "none",
     });
 
     res.status(200).json({ msg: "Success" });

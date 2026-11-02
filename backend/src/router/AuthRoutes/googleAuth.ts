@@ -48,10 +48,12 @@ export const authFunction = async (req: Request, res: Response) => {
     res.cookie("accesstoken", accessToken, {
       maxAge: 15 * 60 * 60,
       httpOnly: true,
+      sameSite: "none",
     });
     res.cookie("refreshtoken", refreshToken, {
       maxAge: 7 * 24 * 60 * 60,
       httpOnly: true,
+      sameSite: "none",
     });
 
     return res
