@@ -1,12 +1,9 @@
 import type { CookieOptions, Response } from "express";
 
-const isProduction = process.env.NODE_ENV === "production";
-
 const sharedCookieOptions: CookieOptions = {
   httpOnly: true,
-  path: "/",
-  sameSite: isProduction ? "none" : "lax",
-  secure: isProduction,
+  sameSite: "none",
+  secure: true,
 };
 
 const accessTokenCookieOptions: CookieOptions = {
