@@ -1,6 +1,7 @@
 import passport from "passport";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
+import { setAuthCookies } from "../../utils/authCookies";
 
 require("./googleStrategy");
 
@@ -45,16 +46,7 @@ export const authFunction = async (req: Request, res: Response) => {
         expiresIn: "7d",
       },
     );
-    res.cookie("accesstoken", accessToken, {
-      maxAge: 15 * 60 * 60,
-      httpOnly: true,
-      sameSite: "none",
-    });
-    res.cookie("refreshtoken", refreshToken, {
-      maxAge: 7 * 24 * 60 * 60,
-      httpOnly: true,
-      sameSite: "none",
-    });
+    setAuthCookies(res, accessToken, refreshToken);
 
     return res
       .status(200)

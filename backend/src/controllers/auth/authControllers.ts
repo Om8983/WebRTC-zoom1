@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { prisma } from "../../prismaInstance";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { clearAuthCookies, setAuthCookies } from "../../utils/authCookies";
 
 export async function signup(req: Request, res: Response) {
   /* first we we'll get the user data
@@ -53,16 +54,7 @@ export async function signup(req: Request, res: Response) {
         expiresIn: "7d",
       },
     );
-    res.cookie("accesstoken", accessToken, {
-      maxAge: 15 * 60 * 60,
-      httpOnly: true,
-      sameSite: "none",
-    });
-    res.cookie("refreshtoken", refreshToken, {
-      maxAge: 7 * 24 * 60 * 60,
-      httpOnly: true,
-      sameSite: "none",
-    });
+    setAuthCookies(res, accessToken, refreshToken);
 
     res.status(200).json({ msg: "User signup success." });
   } catch (error) {
@@ -127,17 +119,7 @@ export async function login(req: Request, res: Response) {
       { expiresIn: "1d" },
     );
 
-    res.cookie("accesstoken", accessToken, {
-      maxAge: 15 * 60 * 60,
-      httpOnly: true,
-      sameSite: "none",
-    });
-
-    res.cookie("refreshtoken", refreshToken, {
-      maxAge: 7 * 24 * 60 * 60,
-      httpOnly: true,
-      sameSite: "none",
-    });
+    setAuthCookies(res, accessToken, refreshToken);
 
     res.status(200).json({ msg: "Success", userId: user?.id });
     return;
@@ -148,17 +130,7 @@ export async function login(req: Request, res: Response) {
 
 export async function logout(req: Request, res: Response) {
   try {
-    res.cookie("accesstoken", {
-      maxAge: 15 * 60 * 60,
-      httpOnly: true,
-      sameSite: "none",
-    });
-
-    res.cookie("refreshtoken", {
-      maxAge: 7 * 24 * 60 * 60,
-      httpOnly: true,
-      sameSite: "none",
-    });
+    clearAuthCookies(res);
 
     res.status(200).json({ msg: "Success" });
     return;
