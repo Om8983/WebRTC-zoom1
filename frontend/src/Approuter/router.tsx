@@ -4,6 +4,7 @@ import { RouteFallback } from "../Components/RouteFallback"
 import { Protected } from "../Protected"
 
 const Home = lazy(() => import("../Pages/Home").then(({ Home }) => ({ default: Home })))
+const MeetingRoom = lazy(() => import("../Pages/MeetingRoom").then(({ MeetingRoom }) => ({ default: MeetingRoom })))
 const Login = lazy(() => import("../Pages/Auth").then(({ Login }) => ({ default: Login })))
 const Signup = lazy(() => import("../Pages/Auth").then(({ Signup }) => ({ default: Signup })))
 
@@ -16,6 +17,7 @@ export const Approutes = () => {
                 <Route element={<Protected />}>
                     <Route path="/" element={<Home />} />
                     <Route path="/home" element={<Home />} />
+                    <Route path="/meeting/:meetingId" element={<MeetingRoom />} />
                 </Route>
             </Routes>
         </Suspense>

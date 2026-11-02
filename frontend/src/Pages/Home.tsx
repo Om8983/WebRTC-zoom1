@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useNavigate } from "react-router-dom"
 import { DashboardHeader } from "../Components/Dashboard/DashboardHeader"
 import { MeetingActionCard } from "../Components/Dashboard/MeetingActionCard"
 import type { MeetingAction } from "../Components/Dashboard/MeetingActionCard"
@@ -14,15 +15,90 @@ import { BACKEND_URL } from "../Utils/config"
 
 export const Home = () => {
     const [activeAction, setActiveAction] = useState<MeetingAction | null>(null)
+    const navigate = useNavigate()
     const { theme } = useTheme()
     const isDark = theme === "dark"
     const today = new Intl.DateTimeFormat("en", { weekday: "long", month: "long", day: "numeric" }).format(new Date())
-
     const userCred = useSelector(
         (state: Rootstate) => state.user
     )
 
-    const handleMeetingSubmit = async (action: MeetingAction, data: MeetingFormData) => {
+
+    // const startRTCPeerConnection = async (c: any) => {
+    //     try {
+    //         if (!socket.current) return
+
+    //         const peerconnection = new RTCPeerConnection({
+    //             iceServers: [{
+    //                 urls: 'stun:stun.l.google.com:19302'
+    //             }]
+    //         })
+    //         console.log(`created peer connection for ${c} `)
+    //         pc.current = peerconnection;
+
+    //         peerconnection.onicecandidate = (event) => {
+    //             const candidate = event.candidate;
+    //             if (!candidate) return
+    //             const icePayload = {
+    //                 type: 'addIceCandidate',
+    //                 userId: userCred.userId,
+    //                 meetingId: meetingId,
+    //                 targetId: c,
+    //                 candidate: candidate,
+    //             }
+    //             socket.current?.send(JSON.stringify(icePayload))
+    //         }
+
+    //         // generating the track
+    //         const mediaConstraints = {
+    //             video: {
+    //                 width: 500,
+    //                 height: 500,
+    //                 frame: { ideal: 30 }
+    //             },
+    //             audio: true
+    //         }
+    //         const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints)
+    //         const streamArray = stream.getTracks()
+    //         streamArray.forEach((track) =>
+    //             peerconnection.addTrack(track, stream)
+    //         )
+
+    //         // generating the sdp locally
+    //         const offer = await peerconnection.createOffer()
+    //         peerconnection.setLocalDescription(offer)
+    //         const payload = {
+    //             type: 'createOffer',
+    //             userId: userCred.userId,
+    //             meetingId: meetingId,
+    //             targetId: c,
+    //             sdp: peerconnection.localDescription
+    //         }
+    //         socket.current.send(JSON.stringify(payload))
+
+    //         // performing actions based on the messages received from the receiver
+    //         socket.current.onmessage = async (event) => {
+    //             const message = JSON.parse(event.data)
+    //             if (message.type === "joinMeeting") {
+    //                 const res = message.user;
+    //                 toast.success(`${res.userName}(${res.email}) joined the meeting.`)
+    //                 return
+    //             }
+    //             else if (message.type === 'createAnswer') {
+    //                 if (message.from !== c) console.log("from key doesn't match user id")
+    //                 console.log("verified the id and setting the local description of the sender sdp.")
+    //                 await peerconnection.setRemoteDescription(message.sdp)
+    //             }
+    //             else if (message.type === 'addIceCandidate' && peerconnection.remoteDescription) {
+    //                 await peerconnection.addIceCandidate(message.candidate)
+    //             }
+    //         }
+    //     } catch (error) {
+    //         toast.error("error")
+    //     }
+    // }
+
+    const handleCreateMeeting = async (action: MeetingAction, data: MeetingFormData) => {
         if (action !== "create") return
 
         try {
@@ -34,10 +110,60 @@ export const Home = () => {
                 invitees: data.invitees,
             }
 
-            const res = await axios.post(`${BACKEND_URL}/createMeeting`, meetingPayload, { withCredentials: true })
+            const res = await axios.post<{ meetingId: string; meetingCode: string }>(
+                `${BACKEND_URL}/api/v1/users/createMeeting`,
+                meetingPayload,
+                { withCredentials: true },
+            )
             if (res.status === 200) {
-                toast.success("Meeting created successfully.")
+                const { meetingCode } = res.data
+                toast.success("Meeting created successfully.", {
+                    description: `Meeting code: ${meetingCode}`,
+                    action: {
+                        label: "Copy code",
+                        onClick: async () => {
+                            try {
+                                await navigator.clipboard.writeText(meetingCode)
+                                toast.success("Meeting code copied.")
+                            } catch {
+                                toast.error("Unable to copy the meeting code. Please copy it manually.", {
+                                    description: meetingCode,
+                                })
+                            }
+                        },
+                    },
+                })
                 setActiveAction(null)
+                navigate(`/meeting/${res.data.meetingId}`)
+                return
+            }
+            return false
+        } catch (error) {
+            if (error instanceof AxiosError) {
+                if (error?.response?.status === 404) {
+                    toast.error("Invalid request.")
+                    return false
+                }
+                toast.error("Internal server error.")
+                return false
+            }
+            return false
+        }
+    }
+
+    const handleJoinMeeting = async (action: MeetingAction, data: MeetingFormData) => {
+        if (action !== "join") return
+        try {
+            const meetingPayload = {
+                meetingCode: data.meetingCode,
+                userId: userCred.userId
+            }
+
+            const res = await axios.post(`${BACKEND_URL}/api/v1/users/joinMeeting`, meetingPayload, { withCredentials: true })
+            if (res.status === 200) {
+                toast.success("Meeting joined successfully.")
+                setActiveAction(null)
+                navigate(`/meeting/${res.data.meetingId}`)
                 return
             }
             return false
@@ -119,10 +245,18 @@ export const Home = () => {
             </section>
 
             {
-                activeAction &&
+                activeAction === "create" &&
                 <MeetingDialog
                     action={activeAction}
-                    onSubmit={handleMeetingSubmit}
+                    onSubmit={handleCreateMeeting}
+                    onClose={() => setActiveAction(null)}
+                />
+            }
+            {
+                activeAction === "join" &&
+                <MeetingDialog
+                    action={activeAction}
+                    onSubmit={handleJoinMeeting}
                     onClose={() => setActiveAction(null)}
                 />
             }

@@ -1,13 +1,31 @@
 import { useEffect, useRef, useState } from "react"
 import type { FormEvent } from "react"
-import { IconCheck, IconX } from "@tabler/icons-react"
+import { IconCheck, IconLoader2, IconX } from "@tabler/icons-react"
 import type { MeetingAction } from "./MeetingActionCard"
 import { Button } from "../Button"
 import { useTheme } from "../ThemeProvider"
 
+export type MeetingFormData = {
+    meetingTitle?: string
+    meetingCode?: string
+    meetingDate?: string
+    meetingTime?: string
+    invitees: string[]
+}
+
 type MeetingDialogProps = {
     action: MeetingAction
     onClose: () => void
+    onSubmit: (action: MeetingAction, data: MeetingFormData) => boolean | void | Promise<boolean | void>
+}
+
+export function parseInviteeEmails(raw: string): string[] {
+    const emails = raw
+        .split(/[,;\s]+/)
+        .map((part) => part.trim())
+        .filter(Boolean)
+
+    return [...new Set(emails)]
 }
 
 const dialogCopy = {
@@ -16,8 +34,11 @@ const dialogCopy = {
     schedule: { eyebrow: "MAKE A LITTLE TIME", title: "Schedule a meeting", description: "Pick a time that works for your people.", submit: "Schedule meeting" },
 }
 
-export const MeetingDialog = ({ action, onClose }: MeetingDialogProps) => {
+export const MeetingDialog = ({ action, onClose, onSubmit }: MeetingDialogProps) => {
     const [submitted, setSubmitted] = useState(false)
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [invitees, setInvitees] = useState<string[]>([])
+    const [inviteeInput, setInviteeInput] = useState("")
     const closeButtonRef = useRef<HTMLButtonElement>(null)
     const copy = dialogCopy[action]
     const { theme } = useTheme()
@@ -37,19 +58,38 @@ export const MeetingDialog = ({ action, onClose }: MeetingDialogProps) => {
     useEffect(() => {
         closeButtonRef.current?.focus()
         const handleKeyDown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") onClose()
+            if (event.key === "Escape" && !isSubmitting) onClose()
         }
         window.addEventListener("keydown", handleKeyDown)
         return () => window.removeEventListener("keydown", handleKeyDown)
-    }, [onClose])
+    }, [isSubmitting, onClose])
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault()
-        setSubmitted(true)
+        if (isSubmitting) return
+
+        const formData = new FormData(event.currentTarget)
+        const allInvitees = [...new Set([...invitees, ...parseInviteeEmails(inviteeInput)])]
+
+        setIsSubmitting(true)
+        try {
+            const ok = await onSubmit(action, {
+                meetingTitle: String(formData.get("meetingTitle") ?? "").trim() || undefined,
+                meetingCode: String(formData.get("meetingCode") ?? "").trim() || undefined,
+                meetingDate: String(formData.get("meetingDate") ?? "").trim() || undefined,
+                meetingTime: String(formData.get("meetingTime") ?? "").trim() || undefined,
+                invitees: allInvitees,
+            })
+            if (ok === false) return
+            if (action === "create") return
+            setSubmitted(true)
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#17352f]/55 p-4 backdrop-blur-[3px]" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[#17352f]/55 p-4 backdrop-blur-[3px]" onMouseDown={(event) => !isSubmitting && event.target === event.currentTarget && onClose()}>
             <section aria-labelledby="meeting-dialog-title" aria-modal="true" className={`my-auto w-full max-w-[450px] rounded-[8px] border p-7 shadow-[0_28px_80px_rgba(13,33,28,0.25)] max-[420px]:p-5 ${surfaceTheme}`} role="dialog">
                 <div className="mb-6 flex items-start justify-between gap-4">
                     <div>
@@ -57,7 +97,7 @@ export const MeetingDialog = ({ action, onClose }: MeetingDialogProps) => {
                         <h2 className="m-0 font-display text-[24px] font-bold text-gather-ink" id="meeting-dialog-title">{submitted ? "You’re all set" : copy.title}</h2>
                         <p className="mb-0 mt-2 text-[11px] leading-relaxed text-gather-muted">{submitted ? "Your meeting details are ready in this preview." : copy.description}</p>
                     </div>
-                    <button aria-label="Close dialog" className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-gather-muted transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gather-forest ${closeTheme}`} onClick={onClose} ref={closeButtonRef} type="button"><IconX aria-hidden="true" size={18} stroke={1.8} /></button>
+                    <button aria-label="Close dialog" className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-gather-muted transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-gather-forest disabled:cursor-not-allowed disabled:opacity-50 ${closeTheme}`} disabled={isSubmitting} onClick={onClose} ref={closeButtonRef} type="button"><IconX aria-hidden="true" size={18} stroke={1.8} /></button>
                 </div>
 
                 {submitted ? (
@@ -77,16 +117,57 @@ export const MeetingDialog = ({ action, onClose }: MeetingDialogProps) => {
                             <label className={`flex flex-col gap-2 text-[10px] font-semibold ${fieldLabelTheme}`} htmlFor="meeting-date">Date<input className={`h-11 min-w-0 rounded border px-3 text-xs font-normal outline-none focus:border-[#789b62] ${fieldTheme}`} id="meeting-date" name="meetingDate" type="date" required /></label>
                             <label className={`flex flex-col gap-2 text-[10px] font-semibold ${fieldLabelTheme}`} htmlFor="meeting-time">Time<input className={`h-11 min-w-0 rounded border px-3 text-xs font-normal outline-none focus:border-[#789b62] ${fieldTheme}`} id="meeting-time" name="meetingTime" type="time" required /></label>
                         </div>}
-                        {action !== "join" && <label className={`flex flex-col gap-2 text-[10px] font-semibold ${fieldLabelTheme}`} htmlFor="meeting-guests">Invite people <span className="font-normal text-gather-muted">Optional</span>
-                            <input className={`h-11 rounded border px-3 text-xs font-normal outline-none placeholder:text-[#a6ada7] focus:border-[#789b62] focus:ring-[3px] focus:ring-[#789b62]/10 ${fieldTheme}`} id="meeting-guests" name="meetingGuests" placeholder="Email addresses" type="text" />
-                        </label>}
+                        {action !== "join" && <div className={`flex flex-col gap-2 text-[10px] font-semibold ${fieldLabelTheme}`}>
+                            <label htmlFor="meeting-guests">Invite people <span className="font-normal text-gather-muted">Optional</span></label>
+                            <span className={`flex min-h-11 flex-wrap items-center gap-2 rounded border px-3 py-2 text-xs font-normal focus-within:border-[#789b62] focus-within:ring-[3px] focus-within:ring-[#789b62]/10 ${fieldTheme}`}>
+                                {invitees.map((email) => (
+                                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] ${isDark ? "bg-[#304038] text-[#c9e79f]" : "bg-[#eff4e9] text-gather-forest"}`} key={email}>
+                                        {email}
+                                        <button
+                                            aria-label={`Remove ${email}`}
+                                            className="grid h-4 w-4 place-items-center rounded-full opacity-70 transition hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-gather-forest"
+                                            onClick={() => setInvitees((current) => current.filter((invitee) => invitee !== email))}
+                                            type="button"
+                                        >
+                                            <IconX aria-hidden="true" size={12} stroke={2} />
+                                        </button>
+                                    </span>
+                                ))}
+                                <input
+                                    className="h-6 min-w-[140px] flex-1 bg-transparent text-xs font-normal outline-none placeholder:text-[#a6ada7]"
+                                    id="meeting-guests"
+                                    onChange={(event) => setInviteeInput(event.target.value)}
+                                    onKeyDown={(event) => {
+                                        if (event.key !== "Enter") return
+                                        event.preventDefault()
+                                        const newInvitees = parseInviteeEmails(inviteeInput)
+                                        if (!newInvitees.length) return
+                                        setInvitees((current) => [...new Set([...current, ...newInvitees])])
+                                        setInviteeInput("")
+                                    }}
+                                    placeholder={invitees.length ? "" : "Enter an email, then press Enter"}
+                                    type="text"
+                                    value={inviteeInput}
+                                />
+                            </span>
+                        </div>}
                         <div className="mt-2 flex justify-end gap-2">
-                            <Button onClick={onClose} title="Cancel" />
-                            <Button btnType="submit" onClick={() => undefined} title={copy.submit} variant="primary" />
+                            <Button disabled={isSubmitting} onClick={onClose} title="Cancel" />
+                            <Button
+                                btnType="submit"
+                                disabled={isSubmitting}
+                                title={isSubmitting ? (action === "create" ? "Creating meeting..." : "Joining meeting...") : copy.submit}
+                                variant="primary"
+                            >
+                                {isSubmitting && <IconLoader2 aria-hidden="true" className="animate-spin" size={16} stroke={1.8} />}
+                            </Button>
                         </div>
                     </form>
                 )}
-                {submitted && <div className="mt-6 flex justify-end"><Button onClick={onClose} title="Done" variant="primary" /></div>}
+                {submitted &&
+                    <div className="mt-6 flex justify-end">
+                        <Button onClick={onClose} title="Done" variant="primary" />
+                    </div>}
             </section>
         </div>
     )
