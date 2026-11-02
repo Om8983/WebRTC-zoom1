@@ -27,12 +27,15 @@ app.use(
     optionsSuccessStatus: 200,
   }),
 );
+app.get("/", (_req, res) => {
+  res.send("Hello, World!");
+});
+
 const PORT = process.env.BACKEND_PORT;
 
 // creating a server to initiate the websocket signaling server connection.
 const server = http.createServer(app);
 initiateWSS(server);
-
 app.use("/api/v1/users", userRouter);
 app.use("/auth", googleRouter);
 
