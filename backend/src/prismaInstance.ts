@@ -2,6 +2,11 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "./generated/prisma/client";
 
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL must be set to start the backend.");
+}
+
 // DATABASE_URL points at Neon's *pooled* (-pooler) endpoint, i.e. PgBouncer
 // already pools connections server-side. The `pg` pool created by PrismaPg
 // therefore stays small — stacking a large client pool on top of PgBouncer
@@ -15,7 +20,7 @@ import { PrismaClient } from "./generated/prisma/client";
 // Without this, the first request after idle fails with P2028
 // ("Unable to start a transaction in the given time").
 const adapter = new PrismaPg({
-  connectionString: process.env.DATABASE_URL!,
+  connectionString: databaseUrl,
   max: 5,
   connectionTimeoutMillis: 15_000,
   idleTimeoutMillis: 30_000,
