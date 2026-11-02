@@ -13,6 +13,7 @@ export const Approutes = () => {
         <Suspense fallback={<RouteFallback />}>
             <Routes>
                 <Route path="/login" element={<Login />} />
+                <Route path="/" element={<Login />} />
                 <Route path="/signup" element={<Signup />} />
                 <Route element={<Protected />}>
                     <Route path="/home" element={<Home />} />
