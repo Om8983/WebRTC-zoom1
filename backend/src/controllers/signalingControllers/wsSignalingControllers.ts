@@ -12,19 +12,42 @@ const socketUserMap = new Map<
 >();
 const meetingUsersMap = new Map<string, string[]>();
 
-type MessageType = {
+export type MessageType = {
   type: string;
   userId: string;
   meetingId: string;
 
   // optional based on the message type
   targetId?: string; // the userId to whom the sdp or candidate is supposed to be sent
-  sdp?: string;
-  candidate?: string;
+  sdp?: {
+    type?: string;
+    sdp?: string;
+  };
+  candidate?: {
+    candidate: string;
+    sdpMid?: string | null;
+    sdpMLineIndex?: number | null;
+    usernameFragment?: string | null;
+  };
 };
 
 export const wsTypeJoin = (message: MessageType, ws: WebSocket) => {
   if (!message.userId || !message.meetingId) return;
+  for (const [socketId, userSocket] of socketUserMap) {
+    if (
+      userSocket.userId === message.userId &&
+      userSocket.meetingId === message.meetingId
+    ) {
+      socketUserMap.delete(socketId);
+      if (
+        userSocket.socketConnection !== ws &&
+        userSocket.socketConnection.readyState === WebSocket.OPEN
+      ) {
+        userSocket.socketConnection.close();
+      }
+    }
+  }
+
   const socketId = crypto.randomUUID();
 
   socketUserMap.set(socketId, {
@@ -35,7 +58,7 @@ export const wsTypeJoin = (message: MessageType, ws: WebSocket) => {
 
   const users = meetingUsersMap.get(message.meetingId) ?? [];
 
-  users.push(message.userId);
+  if (!users.includes(message.userId)) users.push(message.userId);
   meetingUsersMap.set(message.meetingId, users);
 
   return {
@@ -43,6 +66,34 @@ export const wsTypeJoin = (message: MessageType, ws: WebSocket) => {
     type: "join",
     existingUsers: users.filter((c) => c !== message.userId),
   };
+};
+
+export const wsTypeDisconnect = (ws: WebSocket) => {
+  for (const [socketId, userSocket] of socketUserMap) {
+    if (userSocket.socketConnection !== ws) continue;
+
+    socketUserMap.delete(socketId);
+    const users = meetingUsersMap.get(userSocket.meetingId) ?? [];
+    const remainingUsers = users.filter((userId) => userId !== userSocket.userId);
+    if (remainingUsers.length === 0) {
+      meetingUsersMap.delete(userSocket.meetingId);
+    } else {
+      meetingUsersMap.set(userSocket.meetingId, remainingUsers);
+    }
+
+    const message = JSON.stringify({
+      type: "participantLeft",
+      userId: userSocket.userId,
+    });
+    for (const remainingUserId of remainingUsers) {
+      const peer = fetchActiveUserSocket(
+        remainingUserId,
+        userSocket.meetingId,
+        socketUserMap,
+      );
+      if (peer?.ws.readyState === WebSocket.OPEN) peer.ws.send(message);
+    }
+  }
 };
 
 // 2 other functions are supposed to be created which will be responsible for letting other users know that some user has joined or left
@@ -65,12 +116,27 @@ export const wsTypeParticpantJoined = async (
     return { msg: "No user found." };
   }
   const meetingId = userSocket.meetingId;
-  const meeting = await prisma.meeting.findFirst({
+  const meeting = await prisma.meeting.findUnique({
     where: {
       id: meetingId,
     },
     select: {
       meetingStatus: true,
+      participants: {
+        where: {
+          participantId: message.userId,
+        },
+        select: {
+          role: true,
+          user: {
+            select: {
+              userName: true,
+              email: true,
+              id: true,
+            },
+          },
+        },
+      },
     },
   });
   if (meeting?.meetingStatus === "END") {
@@ -79,7 +145,6 @@ export const wsTypeParticpantJoined = async (
   const users = meetingUsersMap.get(meetingId);
   const updatedUsers = users?.filter((c) => c !== message.userId) || [];
   meetingUsersMap.set(meetingId, updatedUsers);
-
   ws.send(
     JSON.stringify({
       type: "participantJoined",
@@ -88,6 +153,12 @@ export const wsTypeParticpantJoined = async (
       msg: "User has joined the meeting.",
     }),
   );
+
+  return {
+    msg: "New user joined.",
+    type: "joinMeeting",
+    user: meeting?.participants[0],
+  };
 };
 export const wsTypeParticipantLeft = async (
   message: MessageType,
@@ -140,26 +211,30 @@ export const wsTypeParticipantLeft = async (
   );
 };
 
-export const wsTypeOffer = (message: MessageType, ws: WebSocket) => {
+export const wsTypeOffer = async (message: MessageType, ws: WebSocket) => {
   try {
     // first we will check if the user is a part of that meeting
-    if (message.userId && message.meetingId) {
-      return { msg: "Invalid user credentials" };
+    if (!message.userId || !message.meetingId || !message.targetId || !message.sdp) {
+      return { type: "signalingError", msg: "Invalid offer signaling payload." };
     }
 
     // offer will be responsible for forwarding the respective sdp to the other users present in the room
     // therefore the 'offer' expects the 'to'(the userId for whom the sdp is created) and 'sdp'(the created sdp to forward) in the request incoming from the user.
 
     // first we will check if a socket connection is created across the user requesting to share sdp to other users
-    const isSocketConnectionCreated = socketUserMap.get(message.userId);
-    if (!isSocketConnectionCreated) {
-      return { msg: "No socket connection created across user." };
+    const sender = fetchActiveUserSocket(
+      message.userId,
+      message.meetingId,
+      socketUserMap,
+    );
+    if (!sender || sender.ws !== ws || ws.readyState !== WebSocket.OPEN) {
+      return { type: "signalingError", msg: "Sender is not connected to this meeting." };
     }
     // if user connection exist then we will check if user is registered in the meeting
     const users = meetingUsersMap.get(message.meetingId) ?? [];
     const userRegistered = users.find((c) => c === message.userId);
     if (!userRegistered) {
-      return { msg: "No user registered in the meeting." };
+      return { type: "signalingError", msg: "No user registered in the meeting." };
     }
 
     // if user's connection is created and also exist in the meeting then we will proceed forwarding the user created sdp to the respective user in the meeting
@@ -184,7 +259,7 @@ export const wsTypeOffer = (message: MessageType, ws: WebSocket) => {
     // check if the target exist in the meeting
     const targetExist = users.find((c) => c === message.targetId);
     if (!targetExist) {
-      return { message: "Target user doesn't exist in the meeting." };
+      return { type: "signalingError", msg: "Target user doesn't exist in the meeting." };
     }
     const targetSocketConnection = fetchActiveUserSocket(
       message.targetId as string,
@@ -195,7 +270,15 @@ export const wsTypeOffer = (message: MessageType, ws: WebSocket) => {
       !targetSocketConnection ||
       targetSocketConnection.ws.readyState !== WebSocket.OPEN
     ) {
-      return { msg: "User is not connected." };
+      return { type: "signalingError", msg: "User is not connected." };
+    }
+
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: message.meetingId },
+      select: { meetingStatus: true },
+    });
+    if (meeting?.meetingStatus !== "ACTIVE") {
+      return { type: "signalingError", msg: "Meeting is not active." };
     }
 
     const targetPayload = {
@@ -206,21 +289,31 @@ export const wsTypeOffer = (message: MessageType, ws: WebSocket) => {
 
     targetSocketConnection.ws.send(JSON.stringify(targetPayload));
   } catch (error) {
-    return { msg: "Internal Server Error." };
+    console.error("Failed to relay offer.", error);
+    return { type: "signalingError", msg: "Unable to relay offer." };
   }
 };
 export const wsTypeAnswer = async (message: MessageType, ws: WebSocket) => {
   try {
-    if (!message.userId || !message.meetingId) {
-      return { msg: "Invalid meeting credentials" };
+    if (
+      !message.userId ||
+      !message.meetingId ||
+      !message.targetId ||
+      !message.sdp
+    ) {
+      return { type: "signalingError", msg: "Invalid answer signaling payload." };
     }
 
-    const receiverSocket = socketUserMap.get(message.userId);
-    if (!receiverSocket) {
-      return { msg: "Unauth user." };
+    const sender = fetchActiveUserSocket(
+      message.userId,
+      message.meetingId,
+      socketUserMap,
+    );
+    if (!sender || sender.ws !== ws || ws.readyState !== WebSocket.OPEN) {
+      return { type: "signalingError", msg: "Sender is not connected to this meeting." };
     }
 
-    const meetingId = receiverSocket.meetingId;
+    const meetingId = message.meetingId;
     const isMeetingActive = await prisma.meeting.findFirst({
       where: {
         id: meetingId,
@@ -230,7 +323,7 @@ export const wsTypeAnswer = async (message: MessageType, ws: WebSocket) => {
       },
     });
     if (isMeetingActive?.meetingStatus !== "ACTIVE") {
-      return { msg: "Meeting has ended. No more request tolerated." };
+      return { type: "signalingError", msg: "Meeting is not active." };
     }
 
     const users = meetingUsersMap.get(meetingId);
@@ -238,27 +331,23 @@ export const wsTypeAnswer = async (message: MessageType, ws: WebSocket) => {
     const userExistInMeeting = users?.find((c) => c === message.userId);
     if (!userExistInMeeting || message.userId === message.targetId) {
       return {
+        type: "signalingError",
         msg: "Either user doesn't exist in meeting or the targetId is invalid",
       };
     }
 
-    const targetUser = socketUserMap.get(message.targetId as string);
-    if (!targetUser) {
-      return { msg: "target user doesn't have an active socketConnection." };
-    }
     const targetUserExistInMeeting = users?.find((c) => c === message.targetId);
     if (!targetUserExistInMeeting) {
-      return { msg: "Target User has left the meeting" };
+      return { type: "signalingError", msg: "Target user has left the meeting." };
     }
 
     const targetSocket = fetchActiveUserSocket(
-      message.targetId as string,
+      message.targetId,
       meetingId,
       socketUserMap,
     );
-    // checking if the targetUser's ws connection is OPEN
     if (!targetSocket || targetSocket.ws.readyState !== WebSocket.OPEN) {
-      return { msg: "Target user doesn't have an active socket connection." };
+      return { type: "signalingError", msg: "Target user doesn't have an active socket connection." };
     }
     const payload = {
       type: "createAnswer",
@@ -267,62 +356,154 @@ export const wsTypeAnswer = async (message: MessageType, ws: WebSocket) => {
     };
     targetSocket.ws.send(JSON.stringify(payload));
   } catch (error) {
-    return { msg: "Internal server issue" };
+    console.error("Failed to relay answer.", error);
+    return { type: "signalingError", msg: "Unable to relay answer." };
   }
 };
 
-export const wsTypeEnd = async (message: MessageType) => {
-  // first verify the credentials by the user
-  // get the user and validate socket Connection
-  // validate the meeting is active
-  // check if user exist in the meetingUsersMap
-  // validate if user is a host
-  // get all the users and end socketConnection and delete their mapping from socketUserMap
-  // delete the meeting from the meetingUsersMap
+export const wsTypeEnd = async (message: MessageType, ws: WebSocket) => {
   if (!message.userId || !message.meetingId) {
-    return { msg: "Invalid user credentials" };
+    return { type: "endMeetingResult", success: false, msg: "Invalid user credentials." };
   }
-  const userSocket = socketUserMap.get(message.userId);
-  if (!userSocket) {
-    return { msg: "No user found" };
+
+  const sender = fetchActiveUserSocket(
+    message.userId,
+    message.meetingId,
+    socketUserMap,
+  );
+  if (!sender || sender.ws !== ws || ws.readyState !== WebSocket.OPEN) {
+    return { type: "endMeetingResult", success: false, msg: "User is not connected to this meeting." };
   }
-  const meetingId = userSocket.meetingId;
-  const meeting = await prisma.meeting.findFirst({
-    where: {
-      id: meetingId,
-    },
-    select: {
-      meetingStatus: true,
-      participants: {
-        where: {
-          participantId: message.userId,
-        },
-        select: {
-          role: true,
+
+  try {
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: message.meetingId },
+      select: {
+        meetingStatus: true,
+        participants: {
+          where: { participantId: message.userId },
+          select: { role: true },
         },
       },
-    },
-  });
-  if (meeting?.meetingStatus === "END") {
-    return { msg: "Meeting has already ended" };
-  }
-  if (meeting?.participants[0]?.role !== "HOST") {
-    return { msg: "Only host can end the meeting." };
-  }
-  const users = meetingUsersMap.get(meetingId);
-  users?.forEach((userId) => {
-    const userSocket = socketUserMap.get(userId);
-    if (userSocket) {
-      userSocket.socketConnection.close();
-      socketUserMap.delete(userId);
+    });
+    if (meeting?.meetingStatus !== "ACTIVE") {
+      return { type: "endMeetingResult", success: false, msg: "Meeting is not active." };
     }
-  });
-  meetingUsersMap.delete(meetingId);
-  return { msg: "Meeting has ended successfully." };
+    if (meeting.participants[0]?.role !== "HOST") {
+      return { type: "endMeetingResult", success: false, msg: "Only the host can end the meeting." };
+    }
+
+    const endedAt = new Date();
+    await prisma.meeting.update({
+      where: { id: message.meetingId },
+      data: {
+        meetingStatus: "END",
+        endTime: endedAt,
+        isMeetingCodeInvalid: true,
+        participants: {
+          updateMany: {
+            where: { meetingId: message.meetingId },
+            data: { leaveAt: endedAt },
+          },
+        },
+      },
+    });
+
+    for (const [socketId, userSocket] of socketUserMap) {
+      if (userSocket.meetingId !== message.meetingId) continue;
+
+      if (userSocket.socketConnection.readyState === WebSocket.OPEN) {
+        userSocket.socketConnection.send(
+          JSON.stringify({ type: "meetingEnded", from: message.userId }),
+        );
+        userSocket.socketConnection.close();
+      }
+      socketUserMap.delete(socketId);
+    }
+    meetingUsersMap.delete(message.meetingId);
+
+    return { type: "endMeetingResult", success: true };
+  } catch (error) {
+    console.error("Failed to end meeting from signaling.", error);
+    return {
+      type: "endMeetingResult",
+      success: false,
+      msg: "Unable to end the meeting.",
+    };
+  }
 };
 
-export const wsTypeICECandidate = (message: MessageType) => {
-  if (!message.userId || !message.meetingId) {
-    return;
+export const wsTypeICECandidate = async (
+  message: MessageType,
+  ws: WebSocket,
+) => {
+  const signalingError = (msg: string) => ({ type: "signalingError", msg });
+  const candidate = message.candidate;
+
+  if (
+    !message.userId ||
+    !message.meetingId ||
+    !message.targetId ||
+    !candidate
+  ) {
+    return signalingError("Invalid ICE candidate signaling payload.");
   }
+
+  if (message.userId === message.targetId) {
+    return signalingError("Cannot send an ICE candidate to yourself.");
+  }
+
+  const sender = fetchActiveUserSocket(
+    message.userId,
+    message.meetingId,
+    socketUserMap,
+  );
+  if (!sender || sender.ws !== ws || ws.readyState !== WebSocket.OPEN) {
+    return signalingError("Sender is not connected to this meeting.");
+  }
+
+  const users = meetingUsersMap.get(message.meetingId) ?? [];
+  if (!users.includes(message.userId) || !users.includes(message.targetId)) {
+    return signalingError("Sender or target is not in this meeting.");
+  }
+
+  const target = fetchActiveUserSocket(
+    message.targetId,
+    message.meetingId,
+    socketUserMap,
+  );
+  if (!target || target.ws.readyState !== WebSocket.OPEN) {
+    return signalingError("Target user is not connected.");
+  }
+
+  try {
+    const meeting = await prisma.meeting.findUnique({
+      where: { id: message.meetingId },
+      select: { meetingStatus: true },
+    });
+    if (meeting?.meetingStatus !== "ACTIVE") {
+      return signalingError("Meeting is not active.");
+    }
+  } catch (error) {
+    console.error(
+      "Failed to validate meeting before relaying ICE candidate.",
+      error,
+    );
+    return signalingError("Unable to validate meeting for ICE candidate.");
+  }
+
+  if (
+    ws.readyState !== WebSocket.OPEN ||
+    target.ws.readyState !== WebSocket.OPEN
+  ) {
+    return signalingError("Sender or target disconnected before relay.");
+  }
+
+  target.ws.send(
+    JSON.stringify({
+      type: "addIceCandidate",
+      candidate,
+      from: message.userId,
+    }),
+  );
 };

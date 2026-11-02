@@ -1,9 +1,11 @@
 import { error } from "console";
 import { WebSocketServer, WebSocket } from "ws";
 import {
+  type MessageType,
   wsTypeAnswer,
   wsTypeEnd,
   wsTypeICECandidate,
+  wsTypeDisconnect,
   wsTypeJoin,
   wsTypeOffer,
   wsTypeParticipantLeft,
@@ -19,50 +21,61 @@ export function initiateWSS(server: any) {
   // 1. what should i validate in /sender before creating a socketId and assigning it to a map and also the other map..????
   // =>
 
-  type MessageType = {
-    type: string;
-    userId: string;
-    meetingId: string;
-
-    // optional based on the message type
-    targetId: string;
-    sdp?: string;
-    candidate?: string;
-  };
-
   const wss = new WebSocketServer({ server: server });
 
   wss.on("connection", (ws: WebSocket, res) => {
+    ws.on("close", () => wsTypeDisconnect(ws));
+
     ws.on("error", () => {
       console.error("Error connecting to the server");
       throw error;
     });
 
-    ws.on("message", (data: string) => {
+    ws.on("message", async (data: string) => {
       const message = JSON.parse(data) as MessageType;
+      let res;
       switch (message.type) {
         case "join":
-          const res = wsTypeJoin(message, ws);
-          console.log("got the response", res);
+          res = wsTypeJoin(message, ws);
           if (res && ws.readyState === WebSocket.OPEN) {
-            console.log("ws is in readystate sending res");
             return ws.send(JSON.stringify(res));
           }
+          return;
         case "joinMeeting":
-          wsTypeParticpantJoined(message, ws);
+          res = wsTypeParticpantJoined(message, ws);
+          if (res && ws.readyState === WebSocket.OPEN) {
+            return ws.send(JSON.stringify(res));
+          }
+          return;
         case "leaveMeeting":
-          wsTypeParticipantLeft(message, ws);
+          res = wsTypeParticipantLeft(message, ws);
+          if (res && ws.readyState === WebSocket.OPEN) {
+            return ws.send(JSON.stringify(res));
+          }
+          return;
         case "createOffer":
-          wsTypeOffer(message, ws);
+          res = await wsTypeOffer(message, ws);
+          if (res && ws.readyState === WebSocket.OPEN) {
+            return ws.send(JSON.stringify(res));
+          }
           return;
         case "createAnswer":
-          wsTypeAnswer(message, ws);
+          res = await wsTypeAnswer(message, ws);
+          if (res && ws.readyState === WebSocket.OPEN) {
+            return ws.send(JSON.stringify(res));
+          }
           return;
         case "endMeeting":
-          wsTypeEnd(message);
+          res = await wsTypeEnd(message, ws);
+          if (res && ws.readyState === WebSocket.OPEN) {
+            return ws.send(JSON.stringify(res));
+          }
           return;
         case "addIceCandidate":
-          wsTypeICECandidate(message);
+          res = await wsTypeICECandidate(message, ws);
+          if (res && ws.readyState === WebSocket.OPEN) {
+            return ws.send(JSON.stringify(res));
+          }
           return;
       }
     });

@@ -1,11 +1,7 @@
 {
-  // Editor / type-checking config. This is what VS Code's TS server uses,
-  // so it must cover EVERY .ts file you open — including prisma.config.ts
-  // at the repo root. Keeping "types": ["node"] here is what makes
-  // `process`, `__dirname`, etc. available in those files; merely having
-  // @types/node installed is not enough if the file isn't included.
-  // Actual emit is done by tsconfig.build.json (see the `build` script).
   "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./dist",
     "module": "nodenext",
     "target": "esnext",
     "lib": ["esnext"],
@@ -14,8 +10,6 @@
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
     "strict": true,
     "jsx": "react-jsx",
     "verbatimModuleSyntax": false,
