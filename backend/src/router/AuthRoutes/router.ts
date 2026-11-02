@@ -8,6 +8,7 @@ import { login, logout, signup } from "../../controllers/auth/authControllers";
 import { authFunction, fallbackPath, userScope } from "./googleAuth";
 import jwt from "jsonwebtoken";
 import { prisma } from "../../prismaInstance";
+import { setAccessTokenCookie } from "../../utils/authCookies";
 
 const router = Router();
 
@@ -95,11 +96,7 @@ router.get("/authCheck", async (req: Request, res: Response) => {
           expiresIn: "15min",
         },
       );
-      res.cookie("accesstoken", accessToken, {
-        maxAge: 15 * 60 * 60,
-        httpOnly: true,
-        sameSite: "none",
-      });
+      setAccessTokenCookie(res, accessToken);
       res.status(200).json({ msg: "Success", userId: user.id });
     } else {
       const verifiedToken = jwt.verify(

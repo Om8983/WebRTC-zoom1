@@ -22,7 +22,7 @@ app.use(cookieParser());
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "https://web-rtc-zoom1.vercel.app/"],
+    origin: ["http://localhost:5173", "https://web-rtc-zoom1.vercel.app"],
     credentials: true,
     optionsSuccessStatus: 200,
   }),
