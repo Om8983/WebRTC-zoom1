@@ -197,20 +197,24 @@ export async function endMeeting(req: Request, res: Response) {
   }
 }
 
-type GetParticipants = {
-  meetingId: string;
-};
 export async function viewParticipants(req: Request, res: Response) {
   try {
-    const body = req.body as GetParticipants;
+    const meetingId = req.query.meetingId;
+    if (typeof meetingId !== "string" || meetingId.length === 0) {
+      return res.status(400).json({ msg: "Meeting ID is required." });
+    }
+
     const meeting = await prisma.meeting.findUnique({
       where: {
-        id: body.meetingId,
+        id: meetingId,
       },
       select: {
         participants: true,
       },
     });
+    if (!meeting) {
+      return res.status(404).json({ msg: "Meeting not found." });
+    }
     const host = meeting?.participants.filter((c) => c.role === "HOST");
     if (meeting?.participants.length === 0) {
       const invitedParticipants = meeting.participants.filter(
@@ -230,6 +234,6 @@ export async function viewParticipants(req: Request, res: Response) {
       participants: participants,
     });
   } catch (error) {
-    return res.status(500).json({ msg: "Internal Server Error!" });
+    return res.status(500).json({ msg: "Internal Server Errorsdfdsf!" });
   }
 }
