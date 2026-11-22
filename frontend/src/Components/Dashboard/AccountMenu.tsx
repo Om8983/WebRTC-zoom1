@@ -4,6 +4,9 @@ import { IconChevronDown, IconLogout } from "@tabler/icons-react"
 import { useTheme } from "../ThemeProvider"
 import axios, { AxiosError } from "axios"
 import { toast } from "sonner"
+import { useDispatch } from "react-redux"
+import type { AppDispatch } from "../../redux/store"
+import { setUserCred } from "../../redux/userSlice"
 
 export const AccountMenu = () => {
     const [isOpen, setIsOpen] = useState(false)
@@ -11,6 +14,7 @@ export const AccountMenu = () => {
     const triggerRef = useRef<HTMLButtonElement>(null)
     const logoutRef = useRef<HTMLButtonElement>(null)
     const navigate = useNavigate()
+    const dispatch = useDispatch<AppDispatch>()
     const { theme } = useTheme()
     const isDark = theme === "dark"
     const triggerTheme = isDark
@@ -54,6 +58,7 @@ export const AccountMenu = () => {
         try {
             const res = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/auth/logout`, {}, { withCredentials: true })
             if (res.status === 200) {
+                dispatch(setUserCred({ isLogin: false, userId: "" }))
                 setIsOpen(false)
                 navigate("/login")
             }
