@@ -2,7 +2,7 @@ import { useState } from "react"
 import type { InputHTMLAttributes } from "react"
 import { IconArrowRight, IconArrowUpRight, IconLoader2, IconLock } from "@tabler/icons-react"
 import { GoogleButton } from './GoogleButton'
-import { useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { Brand } from '../Brand'
 import { Button } from "../Button"
 import { ThemeToggle } from "../ThemeToggle"
@@ -47,8 +47,7 @@ export const LoginSection = ({ isSignup }: { isSignup: boolean }) => {
     )
     console.log('isLogin,', userCred.isLogin)
     if (userCred.isLogin) {
-        navigate('/home', { replace: true });
-        return
+        return <Navigate to="/home" replace />
     }
     const handleLogin = async () => {
         const loginPayload = { email, password }
@@ -62,6 +61,8 @@ export const LoginSection = ({ isSignup }: { isSignup: boolean }) => {
             if (e instanceof AxiosError) {
                 if (e.response?.status === 403) {
                     toast.warning('Invalid Credentials!')
+                } else if (e.response?.status === 401) {
+                    toast.warning("Invalid Credentials!!")
                 } else if (e.response?.status === 404) {
                     toast.error("User Doesn't Exist. Please Signup!! ")
                     navigate("/signup")

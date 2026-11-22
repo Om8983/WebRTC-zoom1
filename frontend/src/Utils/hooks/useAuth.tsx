@@ -6,11 +6,11 @@ import type { AppDispatch } from "../../redux/store"
 import { setUserCred } from "../../redux/userSlice"
 
 export const useAuth = () => {
-    console.log("starting auth check ")
+    // console.log("starting auth check ")
     const [loading, setLoading] = useState(true)
     const [isVerified, setVerified] = useState<boolean>(false)
     const dispatch = useDispatch<AppDispatch>()
-    console.log('isVerified initial step', isVerified)
+    // console.log('isVerified initial step', isVerified)
     const handleAuthCheck = useCallback(async () => {
         setLoading(true)
         try {
@@ -23,9 +23,7 @@ export const useAuth = () => {
                     isLogin: true,
                     userId: res.data?.userId
                 }
-                console.log('dispatching userCredentials')
                 dispatch(setUserCred(userPayload))
-                console.log('usercreds dispatched')
                 setVerified(true)
             } else {
                 throw new Error("Auth check returned no user id")
@@ -41,7 +39,7 @@ export const useAuth = () => {
                     toast.error("No user found")
                     return
                 } else {
-                    console.log('error', error)
+                    // console.log('error', error)
                     toast.error("Internal Server Error.")
                 }
             }
